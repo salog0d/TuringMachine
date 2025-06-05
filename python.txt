@@ -1,0 +1,59 @@
+def saludar(nombre):
+    return f"Hola, {nombre}!"
+
+def calcular_area_circulo(radio):
+    pi = 3.14159
+    area = pi * radio ** 2
+    return area
+
+nombre = "Python"
+edad = 25
+activo = True
+nada = None
+numeros = [1, 2, 3, 4, 5]
+
+suma = 10 + 5
+resta = 20 - 8
+multiplicacion = 4 * 7
+division = 15 / 3
+modulo = 17 % 5
+
+if edad >= 18:
+    print("Eres mayor de edad")
+else:
+    print("Eres menor de edad")
+
+print("Números del 1 al 5:")
+for numero in numeros:
+    print(f"Número: {numero}")
+
+contador = 0
+while contador < 3:
+    print(f"Contador: {contador}")
+    contador += 1
+
+persona = {
+    'nombre': 'Juan',
+    'edad': 30,
+    'ciudad': 'Madrid'
+}
+
+
+try:
+    resultado = 10 / 0
+except ZeroDivisionError:
+    print("Error: División por cero")
+
+mensaje = saludar("Mundo")
+area = calcular_area_circulo(5)
+
+print(mensaje)
+print(f"El área del círculo es: {area}")
+
+
+cuadrados = [x**2 for x in range(1, 6)]
+print(f"Cuadrados: {cuadrados}")
+
+
+doble = lambda x: x * 2
+print(f"El doble de 5 es: {doble(5)}")

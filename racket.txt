@@ -1,0 +1,525 @@
+;; ====================================================================
+;; ARCHIVO RACKET DE EJEMPLO PARA PROBAR EL RESALTADOR DE SINTAXIS
+;; Incluye: definiciones, S-expresiones, literales, funciones y más
+;; Características: programación funcional, recursión, macros
+;; ====================================================================
+
+#| 
+   Comentario de bloque en Racket
+   Este archivo demuestra todas las características del resaltador
+   basado en Máquina de Turing para el lenguaje Racket/Lisp
+|#
+
+#lang racket
+
+;; ====================================================================
+;; MÓDULOS Y REQUIRES
+;; ====================================================================
+
+(require racket/list)
+(require racket/string)
+(require racket/math)
+(require racket/match)
+
+;; Provide para exportar funciones
+(provide factorial
+         fibonacci
+         quicksort
+         tree-map)
+
+;; ====================================================================
+;; LITERALES Y TIPOS DE DATOS BÁSICOS
+;; ====================================================================
+
+;; Booleanos
+(define verdadero #t)
+(define falso #f)
+(define verdadero-largo #true)
+(define falso-largo #false)
+
+;; Números: enteros, decimales, fracciones, complejos
+(define entero 42)
+(define negativo -17)
+(define decimal 3.14159)
+(define fraccion 22/7)
+(define fraccion-negativa -3/4)
+(define complejo 3+4i)
+(define complejo-decimal 2.5-1.7i)
+
+;; Caracteres literales
+(define caracter-a #\a)
+(define caracter-espacio #\space)
+(define caracter-nueva-linea #\newline)
+(define caracter-tab #\tab)
+(define caracter-unicode #\λ)
+
+;; Strings con escapes
+(define saludo "¡Hola, mundo!")
+(define string-con-escapes "Línea 1\nLínea 2\tTabulación\n\"Comillas\"")
+(define string-unicode "Lambda: λ, Pi: π, Sigma: Σ")
+
+;; Símbolos
+(define simbolo-simple 'mi-simbolo)
+(define simbolo-con-numeros 'variable-123)
+(define simbolo-con-guiones 'nombre-con-guiones-largos)
+
+;; ====================================================================
+;; DEFINICIONES BÁSICAS
+;; ====================================================================
+
+;; Definición simple
+(define pi 3.141592653589793)
+
+;; Definición con lambda explícito
+(define cuadrado 
+  (lambda (x) 
+    (* x x)))
+
+;; Definición con sintaxis de función directa
+(define (cubo x)
+  (* x x x))
+
+;; Función con lambda Unicode
+(define suma-cuadrados 
+  (λ (x y) 
+    (+ (* x x) (* y y))))
+
+;; Función con múltiples argumentos
+(define (promedio . numeros)
+  (if (null? numeros)
+      0
+      (/ (apply + numeros) (length numeros))))
+
+;; ====================================================================
+;; LISTAS Y OPERACIONES FUNDAMENTALES
+;; ====================================================================
+
+;; Listas literales
+(define lista-vacia '())
+(define lista-numeros '(1 2 3 4 5))
+(define lista-mixta '(1 "dos" #\3 #t 'cinco))
+(define lista-anidada '((1 2) (3 4) (5 6)))
+
+;; Construcción con cons
+(define lista-construida 
+  (cons 1 
+        (cons 2 
+              (cons 3 '()))))
+
+;; Operaciones básicas con listas
+(define primer-elemento (car lista-numeros))        ; 1
+(define resto-elementos (cdr lista-numeros))        ; '(2 3 4 5)
+(define segundo-elemento (cadr lista-numeros))      ; 2
+(define tercer-elemento (caddr lista-numeros))      ; 3
+
+;; Funciones de listas más complejas
+(define (longitud lista)
+  (if (null? lista)
+      0
+      (+ 1 (longitud (cdr lista)))))
+
+(define (reverso lista)
+  (define (reverso-helper lista acc)
+    (if (null? lista)
+        acc
+        (reverso-helper (cdr lista) (cons (car lista) acc))))
+  (reverso-helper lista '()))
+
+;; ====================================================================
+;; ESTRUCTURAS DE CONTROL
+;; ====================================================================
+
+;; Condicional if simple
+(define (valor-absoluto x)
+  (if (< x 0)
+      (- x)
+      x))
+
+;; Condicional cond (switch-case de Racket)
+(define (tipo-numero x)
+  (cond
+    [(= x 0) 'cero]
+    [(> x 0) 'positivo]
+    [(< x 0) 'negativo]
+    [else 'no-es-numero]))
+
+;; Condicional case
+(define (nombre-dia numero)
+  (case numero
+    [(1) "Lunes"]
+    [(2) "Martes"]
+    [(3) "Miércoles"]
+    [(4) "Jueves"]
+    [(5) "Viernes"]
+    [(6) "Sábado"]
+    [(7) "Domingo"]
+    [else "Día inválido"]))
+
+;; when y unless
+(define (procesar-lista lista)
+  (when (not (null? lista))
+    (display "Procesando: ")
+    (display (car lista))
+    (newline))
+  
+  (unless (null? lista)
+    (procesar-lista (cdr lista))))
+
+;; ====================================================================
+;; BINDING Y SCOPE
+;; ====================================================================
+
+;; let para binding local
+(define (ecuacion-cuadratica a b c x)
+  (let ([discriminante (- (* b b) (* 4 a c))]
+        [termino-lineal (* b x)]
+        [termino-cuadratico (* a x x)])
+    (+ termino-cuadratico termino-lineal c)))
+
+;; let* para binding secuencial
+(define (calcular-interes principal tasa años)
+  (let* ([tasa-decimal (/ tasa 100)]
+         [factor (+ 1 tasa-decimal)]
+         [monto-final (* principal (expt factor años))]
+         [interes-ganado (- monto-final principal)])
+    (values monto-final interes-ganado)))
+
+;; letrec para funciones mutuamente recursivas
+(define (par-impar n)
+  (letrec ([par? (lambda (x) 
+                   (if (= x 0) 
+                       #t 
+                       (impar? (- x 1))))]
+           [impar? (lambda (x) 
+                     (if (= x 0) 
+                         #f 
+                         (par? (- x 1))))])
+    (par? n)))
+
+;; ====================================================================
+;; RECURSIÓN
+;; ====================================================================
+
+;; Factorial recursivo
+(define (factorial n)
+  (if (<= n 1)
+      1
+      (* n (factorial (- n 1)))))
+
+;; Fibonacci recursivo
+(define (fibonacci n)
+  (cond
+    [(<= n 0) 0]
+    [(= n 1) 1]
+    [else (+ (fibonacci (- n 1)) 
+             (fibonacci (- n 2)))]))
+
+;; Fibonacci con memorización
+(define fibonacci-memo
+  (let ([cache (make-hash)])
+    (lambda (n)
+      (cond
+        [(<= n 1) n]
+        [(hash-has-key? cache n) (hash-ref cache n)]
+        [else 
+         (let ([result (+ (fibonacci-memo (- n 1)) 
+                          (fibonacci-memo (- n 2)))])
+           (hash-set! cache n result)
+           result)]))))
+
+;; ====================================================================
+;; FUNCIONES DE ORDEN SUPERIOR
+;; ====================================================================
+
+;; map - aplicar función a cada elemento
+(define cuadrados (map cuadrado '(1 2 3 4 5)))
+(define dobles (map (λ (x) (* x 2)) '(1 2 3 4 5)))
+
+;; filter - filtrar elementos que cumplan condición
+(define pares (filter even? '(1 2 3 4 5 6 7 8 9 10)))
+(define positivos (filter positive? '(-3 -1 0 2 4 -7 9)))
+
+;; foldl y foldr - reducción de listas
+(define suma-lista (foldl + 0 '(1 2 3 4 5)))
+(define producto-lista (foldr * 1 '(1 2 3 4 5)))
+
+;; Función que devuelve función (closure)
+(define (crear-multiplicador factor)
+  (λ (x) (* x factor)))
+
+(define duplicar (crear-multiplicador 2))
+(define triplicar (crear-multiplicador 3))
+
+;; Composición de funciones
+(define (compose f g)
+  (λ (x) (f (g x))))
+
+(define cuadrado-mas-uno (compose (λ (x) (+ x 1)) cuadrado))
+
+;; ====================================================================
+;; ALGORITMOS CLÁSICOS
+;; ====================================================================
+
+;; Quicksort funcional
+(define (quicksort lista)
+  (if (null? lista)
+      '()
+      (let ([pivot (car lista)]
+            [resto (cdr lista)])
+        (append 
+         (quicksort (filter (λ (x) (< x pivot)) resto))
+         (list pivot)
+         (quicksort (filter (λ (x) (>= x pivot)) resto))))))
+
+;; Búsqueda binaria
+(define (busqueda-binaria lista objetivo)
+  (define (buscar-helper lista objetivo inicio fin)
+    (if (> inicio fin)
+        #f
+        (let ([medio (quotient (+ inicio fin) 2)])
+          (let ([valor-medio (list-ref lista medio)])
+            (cond
+              [(= valor-medio objetivo) medio]
+              [(< valor-medio objetivo) 
+               (buscar-helper lista objetivo (+ medio 1) fin)]
+              [else 
+               (buscar-helper lista objetivo inicio (- medio 1))])))))
+  (buscar-helper lista objetivo 0 (- (length lista) 1)))
+
+;; ====================================================================
+;; ESTRUCTURAS DE DATOS COMPLEJAS
+;; ====================================================================
+
+;; Definir estructura con define-struct
+(define-struct persona (nombre edad email activo))
+
+;; Crear instancias
+(define juan (make-persona "Juan Pérez" 30 "juan@email.com" #t))
+(define maria (make-persona "María González" 25 "maria@email.com" #t))
+
+;; Funciones para trabajar con estructuras
+(define (persona-mayor-edad personas)
+  (foldl (λ (p1 p2) 
+           (if (> (persona-edad p1) (persona-edad p2)) p1 p2))
+         (car personas) 
+         personas))
+
+;; Árboles binarios
+(define-struct nodo (valor izquierdo derecho))
+(define-struct hoja (valor))
+
+(define arbol-ejemplo
+  (make-nodo 5
+             (make-nodo 3
+                        (make-hoja 1)
+                        (make-hoja 4))
+             (make-nodo 8
+                        (make-hoja 7)
+                        (make-hoja 9))))
+
+;; Recorrido de árbol
+(define (tree-map f arbol)
+  (cond
+    [(hoja? arbol) (make-hoja (f (hoja-valor arbol)))]
+    [(nodo? arbol) 
+     (make-nodo (f (nodo-valor arbol))
+                (tree-map f (nodo-izquierdo arbol))
+                (tree-map f (nodo-derecho arbol)))]))
+
+;; ====================================================================
+;; PATTERN MATCHING
+;; ====================================================================
+
+;; match para pattern matching avanzado
+(define (procesar-lista-match lista)
+  (match lista
+    ['() "Lista vacía"]
+    [(list x) (format "Lista con un elemento: ~a" x)]
+    [(list x y) (format "Lista con dos elementos: ~a y ~a" x y)]
+    [(list x y z ...) (format "Lista que empieza con ~a, ~a y tiene ~a más" 
+                              x y (length z))]
+    [_ "Patrón no reconocido"]))
+
+;; match con estructuras
+(define (describir-arbol arbol)
+  (match arbol
+    [(hoja valor) (format "Hoja con valor ~a" valor)]
+    [(nodo valor izq der) 
+     (format "Nodo con valor ~a, izquierdo: ~a, derecho: ~a"
+             valor 
+             (describir-arbol izq) 
+             (describir-arbol der))]))
+
+;; ====================================================================
+;; ITERACIÓN CON FOR
+;; ====================================================================
+
+;; for/list - crear lista con iteración
+(define cuadrados-for 
+  (for/list ([i (in-range 1 11)])
+    (* i i)))
+
+;; for/sum - sumar con iteración
+(define suma-cuadrados-for
+  (for/sum ([i (in-range 1 11)])
+    (* i i)))
+
+;; for anidado
+(define tabla-multiplicar
+  (for/list ([i (in-range 1 11)])
+    (for/list ([j (in-range 1 11)])
+      (* i j))))
+
+;; for con múltiples secuencias
+(define productos-zip
+  (for/list ([x '(1 2 3 4)]
+             [y '(10 20 30 40)])
+    (* x y)))
+
+;; ====================================================================
+;; MACROS SIMPLES
+;; ====================================================================
+
+;; Macro simple con define-syntax
+(define-syntax-rule (cuando condicion cuerpo ...)
+  (if condicion
+      (begin cuerpo ...)
+      (void)))
+
+;; Usar la macro
+(cuando (> 5 3)
+  (display "5 es mayor que 3")
+  (newline))
+
+;; Macro más compleja
+(define-syntax definir-constantes
+  (syntax-rules ()
+    [(_ (nombre valor) ...)
+     (begin
+       (define nombre valor) ...)]))
+
+(definir-constantes 
+  (SEGUNDOS-POR-MINUTO 60)
+  (MINUTOS-POR-HORA 60)
+  (HORAS-POR-DIA 24))
+
+;; ====================================================================
+;; FUNCIONES MATEMÁTICAS Y CIENTÍFICAS
+;; ====================================================================
+
+;; Función para calcular serie de Taylor de e^x
+(define (exponencial x términos)
+  (define (factorial n)
+    (if (<= n 1) 1 (* n (factorial (- n 1)))))
+  
+  (for/sum ([n (in-range términos)])
+    (/ (expt x n) (factorial n))))
+
+;; Números primos con criba de Eratóstenes
+(define (primos-hasta n)
+  (define numeros (make-vector (+ n 1) #t))
+  (vector-set! numeros 0 #f)
+  (vector-set! numeros 1 #f)
+  
+  (for ([i (in-range 2 (+ (inexact->exact (floor (sqrt n))) 1))])
+    (when (vector-ref numeros i)
+      (for ([j (in-range (* i i) (+ n 1) i)])
+        (vector-set! numeros j #f))))
+  
+  (for/list ([i (in-range 2 (+ n 1))]
+             #:when (vector-ref numeros i))
+    i))
+
+;; ====================================================================
+;; FUNCIONES DE UTILIDAD Y EJEMPLOS FINALES
+;; ====================================================================
+
+;; Función curry avanzada
+(define (curry-3 f)
+  (λ (x) (λ (y) (λ (z) (f x y z)))))
+
+(define suma-tres (curry-3 +))
+(define suma-5 ((suma-tres 2) 3))  ; Función que suma 5 a su argumento
+
+;; Función con argumentos keywords
+(define (crear-rectangulo #:ancho ancho #:alto alto #:color [color 'azul])
+  (list 'rectangulo ancho alto color))
+
+;; Funciones con contratos implícitos
+(define/contract (dividir numerador denominador)
+  (-> number? (and/c number? (not/c zero?)) number?)
+  (/ numerador denominador))
+
+;; Función que demuestra múltiples características
+(define (procesar-datos datos 
+                       #:filtro [filtro-fn identity] 
+                       #:transformacion [trans-fn identity]
+                       #:reduccion [red-fn +]
+                       #:valor-inicial [inicial 0])
+  "Función que demuestra programación funcional en Racket"
+  (let* ([datos-filtrados (filter filtro-fn datos)]
+         [datos-transformados (map trans-fn datos-filtrados)]
+         [resultado (foldl red-fn inicial datos-transformados)])
+    (values resultado 
+            (length datos-filtrados) 
+            (length datos))))
+
+;; Ejemplos de uso de la función anterior
+(define datos-ejemplo '(1 2 3 4 5 6 7 8 9 10))
+
+(define resultado-pares 
+  (procesar-datos datos-ejemplo 
+                  #:filtro even?
+                  #:transformacion cuadrado))
+
+(define resultado-impares-cubos
+  (procesar-datos datos-ejemplo
+                  #:filtro odd?
+                  #:transformacion cubo
+                  #:reduccion max
+                  #:valor-inicial 0))
+
+;; ====================================================================
+;; TESTING Y EJEMPLOS
+;; ====================================================================
+
+;; Función de testing simple
+(define (test nombre esperado obtenido)
+  (if (equal? esperado obtenido)
+      (printf "✓ ~a: PASS\n" nombre)
+      (printf "✗ ~a: FAIL. Esperado: ~a, Obtenido: ~a\n" 
+              nombre esperado obtenido)))
+
+;; Ejecutar tests
+(test "factorial de 5" 120 (factorial 5))
+(test "fibonacci de 7" 13 (fibonacci 7))
+(test "cuadrado de 4" 16 (cuadrado 4))
+(test "longitud de lista" 5 (longitud '(1 2 3 4 5)))
+
+;; Mensaje final
+(display "¡Archivo Racket de ejemplo completado!")
+(newline)
+(display "Total de características demostradas:")
+(newline)
+(display "- Literales: números, strings, caracteres, booleanos, símbolos")
+(newline)
+(display "- Estructuras: listas, vectores, estructuras personalizadas")
+(newline) 
+(display "- Control: if, cond, case, when, unless")
+(newline)
+(display "- Binding: let, let*, letrec")
+(newline)
+(display "- Recursión: factorial, fibonacci, quicksort")
+(newline)
+(display "- Funciones de orden superior: map, filter, fold")
+(newline)
+(display "- Pattern matching con match")
+(newline)
+(display "- Iteración con for/list, for/sum")
+(newline)
+(display "- Macros básicas con define-syntax")
+(newline)
+(display "- Módulos y contratos")
+(newline)
+
+;; Total: ~400+ líneas con características completas de Racket

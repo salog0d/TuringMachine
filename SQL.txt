@@ -1,0 +1,347 @@
+-- ====================================================================
+-- ARCHIVO SQL DE EJEMPLO PARA PROBAR EL RESALTADOR DE SINTAXIS
+-- Incluye: DDL, DML, funciones, comentarios, variables, CTEs y más
+-- ====================================================================
+
+/* 
+   Comentario de bloque
+   Este archivo demuestra todas las características del resaltador SQL
+   basado en Máquina de Turing
+*/
+
+-- Variables SQL Server/MySQL
+DECLARE @usuario_id INT = 1001;
+DECLARE @fecha_inicio DATE = '2024-01-01';
+DECLARE @salario_minimo DECIMAL(10,2) = 35000.00;
+
+-- ====================================================================
+-- DDL (Data Definition Language) - Definición de estructuras
+-- ====================================================================
+
+-- Crear esquema
+CREATE SCHEMA IF NOT EXISTS empresa;
+
+-- Crear tabla con diferentes tipos de datos
+CREATE TABLE empresa.empleados (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    telefono CHAR(10),
+    fecha_nacimiento DATE,
+    fecha_contratacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    salario DECIMAL(10,2) CHECK (salario > 0),
+    departamento_id INT,
+    activo BOOLEAN DEFAULT TRUE,
+    perfil JSON,
+    foto BLOB,
+    notas TEXT,
+    FOREIGN KEY (departamento_id) REFERENCES departamentos(id)
+);
+
+-- Crear índices
+CREATE INDEX idx_empleados_departamento ON empleados(departamento_id);
+CREATE UNIQUE INDEX idx_empleados_email ON empleados(email);
+
+-- Crear vista
+CREATE VIEW empleados_activos AS
+SELECT 
+    e.id,
+    CONCAT(e.nombre, ' ', e.apellido) AS nombre_completo,
+    e.email,
+    d.nombre AS departamento,
+    e.salario
+FROM empleados e
+INNER JOIN departamentos d ON e.departamento_id = d.id
+WHERE e.activo = TRUE;
+
+-- ====================================================================
+-- DML (Data Manipulation Language) - Manipulación de datos
+-- ====================================================================
+
+-- INSERT con diferentes sintaxis
+INSERT INTO departamentos (nombre, presupuesto) VALUES 
+    ('Desarrollo', 500000.00),
+    ('Marketing', 250000.00),
+    ('Recursos Humanos', 150000.00);
+
+-- INSERT con subconsulta
+INSERT INTO empleados (nombre, apellido, email, departamento_id, salario)
+SELECT 
+    'Juan', 
+    'Pérez', 
+    'juan.perez@empresa.com',
+    d.id,
+    45000.00
+FROM departamentos d 
+WHERE d.nombre = 'Desarrollo';
+
+-- UPDATE con JOIN
+UPDATE empleados e
+SET salario = salario * 1.10
+FROM departamentos d
+WHERE e.departamento_id = d.id 
+  AND d.nombre = 'Desarrollo'
+  AND e.fecha_contratacion < '2023-01-01';
+
+-- DELETE con subconsulta
+DELETE FROM empleados 
+WHERE departamento_id IN (
+    SELECT id FROM departamentos 
+    WHERE presupuesto < 100000
+);
+
+-- ====================================================================
+-- CONSULTAS COMPLEJAS (SELECT)
+-- ====================================================================
+
+-- CTE (Common Table Expression)
+WITH empleados_senior AS (
+    SELECT 
+        id,
+        nombre,
+        apellido,
+        salario,
+        DATEDIFF(YEAR, fecha_contratacion, GETDATE()) AS anos_servicio
+    FROM empleados
+    WHERE fecha_contratacion <= DATEADD(YEAR, -5, GETDATE())
+),
+salarios_por_departamento AS (
+    SELECT 
+        d.nombre AS departamento,
+        AVG(e.salario) AS salario_promedio,
+        MIN(e.salario) AS salario_minimo,
+        MAX(e.salario) AS salario_maximo,
+        COUNT(*) AS total_empleados
+    FROM empleados e
+    INNER JOIN departamentos d ON e.departamento_id = d.id
+    GROUP BY d.id, d.nombre
+)
+SELECT 
+    es.nombre,
+    es.apellido,
+    es.salario,
+    es.anos_servicio,
+    spd.salario_promedio,
+    CASE 
+        WHEN es.salario > spd.salario_promedio * 1.2 THEN 'Alto'
+        WHEN es.salario < spd.salario_promedio * 0.8 THEN 'Bajo'
+        ELSE 'Promedio'
+    END AS categoria_salario
+FROM empleados_senior es
+INNER JOIN empleados e ON es.id = e.id
+INNER JOIN salarios_por_departamento spd ON e.departamento_id = (
+    SELECT id FROM departamentos WHERE nombre = spd.departamento
+)
+ORDER BY es.anos_servicio DESC, es.salario DESC;
+
+-- Consulta con múltiples JOINs y funciones de ventana
+SELECT 
+    e.nombre,
+    e.apellido,
+    d.nombre AS departamento,
+    e.salario,
+    AVG(e.salario) OVER (PARTITION BY d.id) AS salario_promedio_dept,
+    RANK() OVER (PARTITION BY d.id ORDER BY e.salario DESC) AS ranking_salario,
+    LAG(e.salario, 1) OVER (ORDER BY e.fecha_contratacion) AS salario_anterior,
+    LEAD(e.salario, 1) OVER (ORDER BY e.fecha_contratacion) AS salario_siguiente
+FROM empleados e
+LEFT JOIN departamentos d ON e.departamento_id = d.id
+WHERE e.activo = TRUE 
+  AND e.salario BETWEEN @salario_minimo AND 100000.00;
+
+-- ====================================================================
+-- FUNCIONES Y OPERADORES
+-- ====================================================================
+
+-- Funciones de cadena
+SELECT 
+    UPPER(nombre) AS nombre_mayuscula,
+    LOWER(apellido) AS apellido_minuscula,
+    CONCAT(nombre, ' ', apellido) AS nombre_completo,
+    LENGTH(email) AS longitud_email,
+    SUBSTRING(email, 1, CHARINDEX('@', email) - 1) AS usuario_email,
+    REPLACE(telefono, '-', '') AS telefono_limpio,
+    TRIM(nombre) AS nombre_sin_espacios
+FROM empleados;
+
+-- Funciones de fecha
+SELECT 
+    nombre,
+    fecha_nacimiento,
+    DATEDIFF(YEAR, fecha_nacimiento, CURDATE()) AS edad,
+    DATE_FORMAT(fecha_contratacion, '%d/%m/%Y') AS fecha_formato,
+    EXTRACT(MONTH FROM fecha_nacimiento) AS mes_nacimiento,
+    DAYOFWEEK(fecha_contratacion) AS dia_semana_contratacion,
+    DATE_ADD(fecha_contratacion, INTERVAL 1 YEAR) AS primer_aniversario
+FROM empleados
+WHERE fecha_nacimiento IS NOT NULL;
+
+-- Funciones matemáticas
+SELECT 
+    nombre,
+    salario,
+    ROUND(salario * 0.12, 2) AS impuesto,
+    CEIL(salario / 12) AS salario_mensual_techo,
+    FLOOR(salario / 365) AS salario_diario_piso,
+    ABS(salario - 50000) AS diferencia_salario_base,
+    POWER(salario / 1000, 2) AS salario_cuadratico,
+    SQRT(salario) AS raiz_cuadrada_salario
+FROM empleados;
+
+-- ====================================================================
+-- SUBCONSULTAS Y EXPRESIONES COMPLEJAS
+-- ====================================================================
+
+-- Subconsulta correlacionada
+SELECT 
+    e1.nombre,
+    e1.apellido,
+    e1.salario,
+    (
+        SELECT COUNT(*) 
+        FROM empleados e2 
+        WHERE e2.departamento_id = e1.departamento_id 
+          AND e2.salario > e1.salario
+    ) AS empleados_con_mejor_salario
+FROM empleados e1
+WHERE e1.activo = TRUE;
+
+-- EXISTS y NOT EXISTS
+SELECT d.nombre AS departamento
+FROM departamentos d
+WHERE EXISTS (
+    SELECT 1 
+    FROM empleados e 
+    WHERE e.departamento_id = d.id 
+      AND e.salario > 60000
+)
+AND NOT EXISTS (
+    SELECT 1 
+    FROM empleados e 
+    WHERE e.departamento_id = d.id 
+      AND e.activo = FALSE
+);
+
+-- ====================================================================
+-- PROCEDIMIENTOS Y FUNCIONES DEFINIDAS
+-- ====================================================================
+
+-- Procedimiento almacenado
+DELIMITER //
+CREATE PROCEDURE AumentarSalario(
+    IN p_departamento_id INT,
+    IN p_porcentaje DECIMAL(5,2)
+)
+BEGIN
+    DECLARE v_count INT DEFAULT 0;
+    
+    -- Contar empleados afectados
+    SELECT COUNT(*) INTO v_count
+    FROM empleados 
+    WHERE departamento_id = p_departamento_id 
+      AND activo = TRUE;
+    
+    -- Aplicar aumento si hay empleados
+    IF v_count > 0 THEN
+        UPDATE empleados 
+        SET salario = salario * (1 + p_porcentaje / 100)
+        WHERE departamento_id = p_departamento_id 
+          AND activo = TRUE;
+        
+        SELECT CONCAT('Se actualizaron ', v_count, ' empleados') AS resultado;
+    ELSE
+        SELECT 'No se encontraron empleados para actualizar' AS resultado;
+    END IF;
+END //
+DELIMITER ;
+
+-- Función definida por usuario
+CREATE FUNCTION CalcularBono(p_salario DECIMAL(10,2)) 
+RETURNS DECIMAL(10,2)
+READS SQL DATA
+DETERMINISTIC
+BEGIN
+    DECLARE v_bono DECIMAL(10,2);
+    
+    CASE 
+        WHEN p_salario < 30000 THEN SET v_bono = p_salario * 0.05;
+        WHEN p_salario < 60000 THEN SET v_bono = p_salario * 0.08;
+        ELSE SET v_bono = p_salario * 0.12;
+    END CASE;
+    
+    RETURN v_bono;
+END;
+
+-- ====================================================================
+-- TRANSACCIONES Y CONTROL
+-- ====================================================================
+
+-- Transacción con manejo de errores
+START TRANSACTION;
+
+SAVEPOINT antes_actualizacion;
+
+UPDATE empleados 
+SET salario = salario * 1.05 
+WHERE departamento_id = @usuario_id;
+
+-- Verificar si la actualización fue exitosa
+IF ROW_COUNT() = 0 THEN
+    ROLLBACK TO antes_actualizacion;
+    SELECT 'Error: No se actualizaron registros' AS mensaje;
+ELSE
+    COMMIT;
+    SELECT 'Actualización exitosa' AS mensaje;
+END IF;
+
+-- ====================================================================
+-- OPERACIONES AVANZADAS
+-- ====================================================================
+
+-- PIVOT (SQL Server style)
+SELECT * FROM (
+    SELECT 
+        YEAR(fecha_contratacion) AS año,
+        d.nombre AS departamento,
+        e.id
+    FROM empleados e
+    JOIN departamentos d ON e.departamento_id = d.id
+) AS source_table
+PIVOT (
+    COUNT(id)
+    FOR departamento IN ([Desarrollo], [Marketing], [Recursos Humanos])
+) AS pivot_table;
+
+-- UNION con múltiples consultas
+SELECT 'Empleado' AS tipo, nombre, apellido, NULL AS descripcion
+FROM empleados
+WHERE activo = TRUE
+
+UNION ALL
+
+SELECT 'Departamento' AS tipo, nombre, NULL, CAST(presupuesto AS VARCHAR(20))
+FROM departamentos
+
+UNION ALL
+
+SELECT 'Resumen' AS tipo, 'Total Empleados', NULL, CAST(COUNT(*) AS VARCHAR(20))
+FROM empleados
+WHERE activo = TRUE;
+
+-- ====================================================================
+-- LIMPIEZA Y DROPS
+-- ====================================================================
+
+-- Cleanup (comentado para seguridad)
+/*
+DROP FUNCTION IF EXISTS CalcularBono;
+DROP PROCEDURE IF EXISTS AumentarSalario;
+DROP VIEW IF EXISTS empleados_activos;
+DROP TABLE IF EXISTS empleados;
+DROP TABLE IF EXISTS departamentos;
+DROP SCHEMA IF EXISTS empresa;
+*/
+
+-- Fin del archivo SQL de ejemplo
+-- Total de líneas: ~250+ con amplia variedad de elementos sintácticos
