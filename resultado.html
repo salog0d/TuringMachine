@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Léxico MULTICORE - python.txt</title>
+    
+        <style>
+        .code-container {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            overflow-x: auto;
+            line-height: 1.6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Estilos de tokens originales */
+        .keyword { color: #0066cc; font-weight: bold; }
+        .string { color: #228B22; background-color: #f0fff0; }
+        .number { color: #FF6347; font-weight: bold; }
+        .comment { color: #708090; font-style: italic; background-color: #f5f5f5; }
+        .identifier { color: #2F4F4F; }
+        
+        /* Operadores con colores específicos */
+        .op-plus { color: #8A2BE2; font-weight: bold; }
+        .op-minus { color: #9932CC; font-weight: bold; }
+        .op-multiply { color: #BA55D3; font-weight: bold; }
+        .op-divide { color: #DA70D6; font-weight: bold; }
+        .op-modulo { color: #DDA0DD; font-weight: bold; }
+        .op-power { color: #EE82EE; font-weight: bold; }
+        
+        .op-equal { color: #191970; font-weight: bold; }
+        .op-not-equal { color: #000080; font-weight: bold; }
+        .op-less { color: #0000CD; font-weight: bold; }
+        .op-greater { color: #4169E1; font-weight: bold; }
+        .op-less-equal { color: #4682B4; font-weight: bold; }
+        .op-greater-equal { color: #6495ED; font-weight: bold; }
+        
+        .op-assign { color: #8B4513; font-weight: bold; }
+        .op-plus-assign { color: #A0522D; font-weight: bold; }
+        .op-minus-assign { color: #CD853F; font-weight: bold; }
+        .op-multiply-assign { color: #D2691E; font-weight: bold; }
+        .op-divide-assign { color: #DEB887; font-weight: bold; }
+        
+        .op-and { color: #B22222; font-weight: bold; }
+        .op-or { color: #DC143C; font-weight: bold; }
+        .op-not { color: #FF0000; font-weight: bold; }
+        
+        .op-bitwise-and { color: #008B8B; font-weight: bold; }
+        .op-bitwise-or { color: #20B2AA; font-weight: bold; }
+        .op-bitwise-xor { color: #48D1CC; font-weight: bold; }
+        .op-bitwise-not { color: #00CED1; font-weight: bold; }
+        .op-left-shift { color: #40E0D0; font-weight: bold; }
+        .op-right-shift { color: #AFEEEE; font-weight: bold; }
+        
+        /* Delimitadores con colores específicos */
+        .del-paren-open { color: #FF1493; font-weight: bold; font-size: 1.1em; }
+        .del-paren-close { color: #FF1493; font-weight: bold; font-size: 1.1em; }
+        .del-bracket-open { color: #FF4500; font-weight: bold; font-size: 1.1em; }
+        .del-bracket-close { color: #FF4500; font-weight: bold; font-size: 1.1em; }
+        .del-brace-open { color: #FF6347; font-weight: bold; font-size: 1.1em; }
+        .del-brace-close { color: #FF6347; font-weight: bold; font-size: 1.1em; }
+        .del-comma { color: #32CD32; font-weight: bold; }
+        .del-colon { color: #00FF00; font-weight: bold; }
+        .del-semicolon { color: #ADFF2F; font-weight: bold; }
+        .del-dot { color: #9ACD32; font-weight: bold; }
+        
+        /* Valores especiales */
+        .boolean-true { color: #006400; font-weight: bold; background-color: #F0FFF0; }
+        .boolean-false { color: #8B0000; font-weight: bold; background-color: #FFF0F0; }
+        .none-value { color: #4B0082; font-weight: bold; background-color: #F8F8FF; }
+        .builtin { color: #800080; font-weight: bold; text-decoration: underline; }
+        
+        .whitespace { background-color: transparent; }
+        .unknown { 
+            color: #FF0000; 
+            background-color: #FFE4E1; 
+            border: 2px solid #FF6347;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        /* Estilos específicos para multiprocessing */
+        
+        .process-0 { border-bottom: 2px solid #FF6B6B; }
+        .cpu-core-0 { background-color: #FF6B6B20; }
+        
+        .process-1 { border-bottom: 2px solid #4ECDC4; }
+        .cpu-core-1 { background-color: #4ECDC420; }
+        
+        .process-2 { border-bottom: 2px solid #45B7D1; }
+        .cpu-core-2 { background-color: #45B7D120; }
+        
+        .process-3 { border-bottom: 2px solid #96CEB4; }
+        .cpu-core-3 { background-color: #96CEB420; }
+        
+        .process-4 { border-bottom: 2px solid #FFEAA7; }
+        .cpu-core-4 { background-color: #FFEAA720; }
+        
+        .process-5 { border-bottom: 2px solid #DDA0DD; }
+        .cpu-core-5 { background-color: #DDA0DD20; }
+        
+        .process-6 { border-bottom: 2px solid #98D8C8; }
+        .cpu-core-6 { background-color: #98D8C820; }
+        
+        .process-7 { border-bottom: 2px solid #F7DC6F; }
+        .cpu-core-7 { background-color: #F7DC6F20; }
+        
+        .process-8 { border-bottom: 2px solid #BB8FCE; }
+        .cpu-core-8 { background-color: #BB8FCE20; }
+        
+        .process-9 { border-bottom: 2px solid #85C1E9; }
+        .cpu-core-9 { background-color: #85C1E920; }
+        
+        
+        .multicore-info {
+            background-color: #e6f7ff;
+            border: 2px solid #1890ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .multicore-stats {
+            background-color: #f6ffed;
+            border-left: 5px solid #52c41a;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .multicore-stats h3 {
+            margin-top: 0;
+            color: #389e0d;
+            display: flex;
+            align-items: center;
+        }
+        
+        .cpu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .cpu-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .cpu-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .cpu-metric {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .cpu-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .core-utilization {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .core-bar {
+            height: 25px;
+            border-radius: 12px;
+            margin: 8px 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        
+        .process-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #fafafa;
+            border-radius: 6px;
+        }
+        
+        .process-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .performance-comparison {
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .speedup-indicator {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 15px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .efficiency-meter {
+            width: 100%;
+            height: 20px;
+            background-color: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .efficiency-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .detailed-stats {
+            background-color: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .stats-table th {
+            background-color: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+            font-weight: bold;
+        }
+        
+        .stats-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stats-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .color-legend {
+            background-color: #f0f8ff;
+            border: 1px solid #b0c4de;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+        
+        .legend-category {
+            margin-bottom: 10px;
+        }
+        
+        .legend-item {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 5px;
+        }
+        </style>
+        
+    <script>
+    // JavaScript para mostrar información de procesos y núcleos al hacer hover
+    document.addEventListener('DOMContentLoaded', function() {
+        const tokens = document.querySelectorAll('[data-process]');
+        tokens.forEach(token => {
+            token.addEventListener('mouseenter', function() {
+                this.style.boxShadow = '0 0 5px rgba(255,0,0,0.8)';
+                const process = this.dataset.process || 'N/A';
+                const core = this.dataset.cpuCore || 'N/A';
+                this.title = `Proceso: ${process} | Núcleo CPU: ${core}`;
+            });
+            token.addEventListener('mouseleave', function() {
+                this.style.boxShadow = '';
+            });
+        });
+        
+        // Animación de carga para mostrar el poder del multicore
+        const cpuCards = document.querySelectorAll('.cpu-card');
+        cpuCards.forEach((card, index) => {
+            card.style.animation = `slideIn 0.5s ease ${index * 0.1}s forwards`;
+        });
+    });
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    </script>
+</head>
+<body>
+    <h1>🔥 Análisis Léxico MULTICORE REAL con Máquina de Turing</h1>
+    <h2>Archivo procesado: python.txt</h2>
+    <p><em>🖥️ Procesamiento paralelo REAL usando 5 procesos en 3 núcleos de CPU</em></p>
+    
+    
+                <div class="multicore-info">
+                    <h4>🔥 Información de Procesamiento Multicore REAL</h4>
+                    <p><strong>🖥️ Sistema:</strong> 6 núcleos de CPU detectados</p>
+                    <p><strong>⚙️ Procesos utilizados:</strong> 5 procesos paralelos</p>
+                    <p><strong>💻 Núcleos activos:</strong> 3 núcleos de CPU trabajando simultáneamente</p>
+                    <p><strong>⏱️ Tiempo total:</strong> 0.338 segundos</p>
+                    <p><strong>🚀 Velocidad:</strong> 1,063 tokens/segundo</p>
+                    <p><strong>⚡ Aceleración:</strong> 0.0x vs. un solo núcleo</p>
+                    <p><strong>🎯 Utilización CPU:</strong> 50.0% del sistema</p>
+                    <p><em>🎨 Los colores en el código indican qué núcleo de CPU procesó cada token</em></p>
+                </div>
+                
+    
+    <div class="color-legend">
+        <h3>🎨 Leyenda de Colores por Símbolo</h3>
+        
+        <div class="legend-category">
+            <strong>Keywords:</strong>
+            <span class="legend-item"><span class="keyword">def if else for while</span> (Azul)</span>
+            <span class="legend-item"><span class="op-and">and</span> <span class="op-or">or</span> <span class="op-not">not</span> (Rojo)</span>
+        </div>
+        
+        <div class="legend-category">
+            <strong>Operadores Aritméticos:</strong>
+            <span class="legend-item"><span class="op-plus">+</span></span>
+            <span class="legend-item"><span class="op-minus">-</span></span>
+            <span class="legend-item"><span class="op-multiply">*</span></span>
+            <span class="legend-item"><span class="op-divide">/</span></span>
+        </div>
+        
+        <div class="legend-category">
+            <strong>💻 Núcleos CPU:</strong>
+            <span class="legend-item">Cada token tiene un color de fondo que indica qué núcleo lo procesó</span>
+        </div>
+        
+        <div class="legend-category">
+            <strong>Interactividad:</strong>
+            <span class="legend-item">🖱️ <em>Hover sobre cualquier token para ver el proceso y núcleo que lo procesó</em></span>
+        </div>
+    </div>
+    
+    
+        <div class="multicore-stats">
+            <h3>🔥 Estadísticas de Procesamiento MULTICORE REAL</h3>
+            
+            <div class="cpu-grid">
+                <div class="cpu-card">
+                    <div class="cpu-metric">358</div>
+                    <div class="cpu-label">Tokens Procesados</div>
+                </div>
+                <div class="cpu-card">
+                    <div class="cpu-metric">0.34s</div>
+                    <div class="cpu-label">Tiempo Total</div>
+                </div>
+                <div class="cpu-card">
+                    <div class="cpu-metric">5/6</div>
+                    <div class="cpu-label">Procesos/Núcleos CPU</div>
+                </div>
+                <div class="cpu-card">
+                    <div class="cpu-metric">1,063</div>
+                    <div class="cpu-label">Tokens/Segundo</div>
+                </div>
+            </div>
+            
+            <div class="performance-comparison">
+                <h4>⚡ Aceleración Multicore</h4>
+                <div class="speedup-indicator">0.0x</div>
+                <div>vs. procesamiento en un solo núcleo</div>
+                <div class="efficiency-meter">
+                    <div class="efficiency-fill" style="width: 0.4%"></div>
+                </div>
+                <div>Eficiencia: 0.4% | Utilización CPU: 50.0%</div>
+            </div>
+        
+            <div class="core-utilization">
+                <h4>💻 Utilización de Núcleos de CPU</h4>
+            
+                <div class="core-bar" style="background-color: #FF6B6B;">
+                    Núcleo CPU 2 - Activo
+                </div>
+                
+                <div class="core-bar" style="background-color: #4ECDC4;">
+                    Núcleo CPU 3 - Activo
+                </div>
+                
+                <div class="core-bar" style="background-color: #45B7D1;">
+                    Núcleo CPU 4 - Activo
+                </div>
+                
+                <div class="core-bar" style="background-color: #cccccc; color: #666;">
+                    Núcleo CPU 0 - No utilizado
+                </div>
+                
+                <div class="core-bar" style="background-color: #cccccc; color: #666;">
+                    Núcleo CPU 1 - No utilizado
+                </div>
+                
+                <div class="core-bar" style="background-color: #cccccc; color: #666;">
+                    Núcleo CPU 5 - No utilizado
+                </div>
+                </div>
+            <h4>📊 Distribución de Trabajo por Proceso</h4>
+            <div class="process-legend">
+            
+                <div class="process-badge" style="background-color: #FF6B6B;">
+                    PID 51166: 200 tokens (55.9%)
+                </div>
+                
+                <div class="process-badge" style="background-color: #4ECDC4;">
+                    PID 51170: 100 tokens (27.9%)
+                </div>
+                
+                <div class="process-badge" style="background-color: #45B7D1;">
+                    PID 51171: 58 tokens (16.2%)
+                </div>
+                </div><h4>🏷️ Distribución por Tipo de Token</h4><div style="columns: 2; column-gap: 20px;"><ul><li><strong>whitespace</strong>: 158 (44.1%)</li><li><strong>delimiter</strong>: 55 (15.4%)</li><li><strong>identifier</strong>: 50 (14.0%)</li><li><strong>operator</strong>: 32 (8.9%)</li><li><strong>number</strong>: 30 (8.4%)</li><li><strong>string</strong>: 17 (4.7%)</li><li><strong>keyword</strong>: 16 (4.5%)</li></ul></div>
+            <h4>⚡ Rendimiento Detallado por Proceso</h4>
+            <div class="detailed-stats">
+                <table class="stats-table">
+                    <tr>
+                        <th>Proceso ID</th>
+                        <th>CPU Core</th>
+                        <th>Chunk</th>
+                        <th>Tokens</th>
+                        <th>Tiempo (s)</th>
+                        <th>Tokens/seg</th>
+                        <th>Errores</th>
+                    </tr>
+            
+                <tr>
+                    <td>51166</td>
+                    <td>Core 4</td>
+                    <td>0</td>
+                    <td>100</td>
+                    <td>0.002</td>
+                    <td>46572</td>
+                    <td>0</td>
+                </tr>
+                
+                <tr>
+                    <td>51170</td>
+                    <td>Core 3</td>
+                    <td>1</td>
+                    <td>100</td>
+                    <td>0.002</td>
+                    <td>47361</td>
+                    <td>0</td>
+                </tr>
+                
+                <tr>
+                    <td>51166</td>
+                    <td>Core 4</td>
+                    <td>2</td>
+                    <td>100</td>
+                    <td>0.001</td>
+                    <td>71981</td>
+                    <td>0</td>
+                </tr>
+                
+                <tr>
+                    <td>51171</td>
+                    <td>Core 2</td>
+                    <td>3</td>
+                    <td>58</td>
+                    <td>0.001</td>
+                    <td>44039</td>
+                    <td>0</td>
+                </tr>
+                </table></div></div>
+    
+    <div class="code-container">
+        <span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">def</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">saludar</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">nombre</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">return</span>&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">f&quot;Hola, {nombre}!&quot;</span>
+
+<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">def</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">calcular_area_circulo</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">radio</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">pi</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">3.14159</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">area</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">pi</span>&nbsp;<span class="op-multiply cpu-core-4" data-process="51166" data-cpu-core="4">*</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">radio</span>&nbsp;<span class="op-power cpu-core-4" data-process="51166" data-cpu-core="4">**</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">2</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">return</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">area</span>
+
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">nombre</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">&quot;Python&quot;</span>
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">edad</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">25</span>
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">activo</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">True</span>
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">nada</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">None</span>
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">numeros</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="del-bracket-open cpu-core-4" data-process="51166" data-cpu-core="4">[</span><span class="number cpu-core-4" data-process="51166" data-cpu-core="4">1</span><span class="del-comma cpu-core-4" data-process="51166" data-cpu-core="4">,</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">2</span><span class="del-comma cpu-core-4" data-process="51166" data-cpu-core="4">,</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">3</span><span class="del-comma cpu-core-4" data-process="51166" data-cpu-core="4">,</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">4</span><span class="del-comma cpu-core-4" data-process="51166" data-cpu-core="4">,</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">5</span><span class="del-bracket-close cpu-core-4" data-process="51166" data-cpu-core="4">]</span>
+
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">suma</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">10</span>&nbsp;<span class="op-plus cpu-core-3" data-process="51170" data-cpu-core="3">+</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">5</span>
+<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">resta</span>&nbsp;<span class="op-assign cpu-core-3" data-process="51170" data-cpu-core="3">=</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">20</span>&nbsp;<span class="op-minus cpu-core-3" data-process="51170" data-cpu-core="3">-</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">8</span>
+<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">multiplicacion</span>&nbsp;<span class="op-assign cpu-core-3" data-process="51170" data-cpu-core="3">=</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">4</span>&nbsp;<span class="op-multiply cpu-core-3" data-process="51170" data-cpu-core="3">*</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">7</span>
+<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">division</span>&nbsp;<span class="op-assign cpu-core-3" data-process="51170" data-cpu-core="3">=</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">15</span>&nbsp;<span class="op-divide cpu-core-3" data-process="51170" data-cpu-core="3">/</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">3</span>
+<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">modulo</span>&nbsp;<span class="op-assign cpu-core-3" data-process="51170" data-cpu-core="3">=</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">17</span>&nbsp;<span class="op-modulo cpu-core-3" data-process="51170" data-cpu-core="3">%</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">5</span>
+
+<span class="keyword cpu-core-3" data-process="51170" data-cpu-core="3">if</span>&nbsp;<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">edad</span>&nbsp;<span class="op-greater-equal cpu-core-3" data-process="51170" data-cpu-core="3">&gt;=</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">18</span><span class="del-colon cpu-core-3" data-process="51170" data-cpu-core="3">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="builtin cpu-core-3" data-process="51170" data-cpu-core="3">print</span><span class="del-paren-open cpu-core-3" data-process="51170" data-cpu-core="3">(</span><span class="string cpu-core-3" data-process="51170" data-cpu-core="3">&quot;Eres mayor de edad&quot;</span><span class="del-paren-close cpu-core-3" data-process="51170" data-cpu-core="3">)</span>
+<span class="keyword cpu-core-3" data-process="51170" data-cpu-core="3">else</span><span class="del-colon cpu-core-3" data-process="51170" data-cpu-core="3">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="builtin cpu-core-3" data-process="51170" data-cpu-core="3">print</span><span class="del-paren-open cpu-core-3" data-process="51170" data-cpu-core="3">(</span><span class="string cpu-core-3" data-process="51170" data-cpu-core="3">&quot;Eres menor de edad&quot;</span><span class="del-paren-close cpu-core-3" data-process="51170" data-cpu-core="3">)</span>
+
+<span class="builtin cpu-core-3" data-process="51170" data-cpu-core="3">print</span><span class="del-paren-open cpu-core-3" data-process="51170" data-cpu-core="3">(</span><span class="string cpu-core-3" data-process="51170" data-cpu-core="3">&quot;Números del 1 al 5:&quot;</span><span class="del-paren-close cpu-core-3" data-process="51170" data-cpu-core="3">)</span>
+<span class="keyword cpu-core-3" data-process="51170" data-cpu-core="3">for</span>&nbsp;<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">numero</span>&nbsp;<span class="keyword cpu-core-3" data-process="51170" data-cpu-core="3">in</span>&nbsp;<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">numeros</span><span class="del-colon cpu-core-3" data-process="51170" data-cpu-core="3">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="builtin cpu-core-3" data-process="51170" data-cpu-core="3">print</span><span class="del-paren-open cpu-core-3" data-process="51170" data-cpu-core="3">(</span><span class="string cpu-core-3" data-process="51170" data-cpu-core="3">f&quot;Número: {numero}&quot;</span><span class="del-paren-close cpu-core-3" data-process="51170" data-cpu-core="3">)</span>
+
+<span class="identifier cpu-core-3" data-process="51170" data-cpu-core="3">contador</span>&nbsp;<span class="op-assign cpu-core-3" data-process="51170" data-cpu-core="3">=</span>&nbsp;<span class="number cpu-core-3" data-process="51170" data-cpu-core="3">0</span>
+<span class="keyword cpu-core-3" data-process="51170" data-cpu-core="3">while</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">contador</span>&nbsp;<span class="op-less cpu-core-4" data-process="51166" data-cpu-core="4">&lt;</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">3</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="builtin cpu-core-4" data-process="51166" data-cpu-core="4">print</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="string cpu-core-4" data-process="51166" data-cpu-core="4">f&quot;Contador: {contador}&quot;</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">contador</span>&nbsp;<span class="op-plus-assign cpu-core-4" data-process="51166" data-cpu-core="4">+=</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">1</span>
+
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">persona</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="del-brace-open cpu-core-4" data-process="51166" data-cpu-core="4">{</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">'nombre'</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">'Juan'</span><span class="del-comma cpu-core-4" data-process="51166" data-cpu-core="4">,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">'edad'</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">30</span><span class="del-comma cpu-core-4" data-process="51166" data-cpu-core="4">,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">'ciudad'</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>&nbsp;<span class="string cpu-core-4" data-process="51166" data-cpu-core="4">'Madrid'</span>
+<span class="del-brace-close cpu-core-4" data-process="51166" data-cpu-core="4">}</span>
+
+
+<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">try</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">resultado</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">10</span>&nbsp;<span class="op-divide cpu-core-4" data-process="51166" data-cpu-core="4">/</span>&nbsp;<span class="number cpu-core-4" data-process="51166" data-cpu-core="4">0</span>
+<span class="keyword cpu-core-4" data-process="51166" data-cpu-core="4">except</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">ZeroDivisionError</span><span class="del-colon cpu-core-4" data-process="51166" data-cpu-core="4">:</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="builtin cpu-core-4" data-process="51166" data-cpu-core="4">print</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="string cpu-core-4" data-process="51166" data-cpu-core="4">&quot;Error: División por cero&quot;</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span>
+
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">mensaje</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">saludar</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="string cpu-core-4" data-process="51166" data-cpu-core="4">&quot;Mundo&quot;</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span>
+<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">area</span>&nbsp;<span class="op-assign cpu-core-4" data-process="51166" data-cpu-core="4">=</span>&nbsp;<span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">calcular_area_circulo</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="number cpu-core-4" data-process="51166" data-cpu-core="4">5</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span>
+
+<span class="builtin cpu-core-4" data-process="51166" data-cpu-core="4">print</span><span class="del-paren-open cpu-core-4" data-process="51166" data-cpu-core="4">(</span><span class="identifier cpu-core-4" data-process="51166" data-cpu-core="4">mensaje</span><span class="del-paren-close cpu-core-4" data-process="51166" data-cpu-core="4">)</span>
+<span class="builtin cpu-core-2" data-process="51171" data-cpu-core="2">print</span><span class="del-paren-open cpu-core-2" data-process="51171" data-cpu-core="2">(</span><span class="string cpu-core-2" data-process="51171" data-cpu-core="2">f&quot;El área del círculo es: {area}&quot;</span><span class="del-paren-close cpu-core-2" data-process="51171" data-cpu-core="2">)</span>
+
+
+<span class="identifier cpu-core-2" data-process="51171" data-cpu-core="2">cuadrados</span>&nbsp;<span class="op-assign cpu-core-2" data-process="51171" data-cpu-core="2">=</span>&nbsp;<span class="del-bracket-open cpu-core-2" data-process="51171" data-cpu-core="2">[</span><span class="identifier cpu-core-2" data-process="51171" data-cpu-core="2">x</span><span class="op-power cpu-core-2" data-process="51171" data-cpu-core="2">**</span><span class="number cpu-core-2" data-process="51171" data-cpu-core="2">2</span>&nbsp;<span class="keyword cpu-core-2" data-process="51171" data-cpu-core="2">for</span>&nbsp;<span class="identifier cpu-core-2" data-process="51171" data-cpu-core="2">x</span>&nbsp;<span class="keyword cpu-core-2" data-process="51171" data-cpu-core="2">in</span>&nbsp;<span class="builtin cpu-core-2" data-process="51171" data-cpu-core="2">range</span><span class="del-paren-open cpu-core-2" data-process="51171" data-cpu-core="2">(</span><span class="number cpu-core-2" data-process="51171" data-cpu-core="2">1</span><span class="del-comma cpu-core-2" data-process="51171" data-cpu-core="2">,</span>&nbsp;<span class="number cpu-core-2" data-process="51171" data-cpu-core="2">6</span><span class="del-paren-close cpu-core-2" data-process="51171" data-cpu-core="2">)</span><span class="del-bracket-close cpu-core-2" data-process="51171" data-cpu-core="2">]</span>
+<span class="builtin cpu-core-2" data-process="51171" data-cpu-core="2">print</span><span class="del-paren-open cpu-core-2" data-process="51171" data-cpu-core="2">(</span><span class="string cpu-core-2" data-process="51171" data-cpu-core="2">f&quot;Cuadrados: {cuadrados}&quot;</span><span class="del-paren-close cpu-core-2" data-process="51171" data-cpu-core="2">)</span>
+
+
+<span class="identifier cpu-core-2" data-process="51171" data-cpu-core="2">doble</span>&nbsp;<span class="op-assign cpu-core-2" data-process="51171" data-cpu-core="2">=</span>&nbsp;<span class="keyword cpu-core-2" data-process="51171" data-cpu-core="2">lambda</span>&nbsp;<span class="identifier cpu-core-2" data-process="51171" data-cpu-core="2">x</span><span class="del-colon cpu-core-2" data-process="51171" data-cpu-core="2">:</span>&nbsp;<span class="identifier cpu-core-2" data-process="51171" data-cpu-core="2">x</span>&nbsp;<span class="op-multiply cpu-core-2" data-process="51171" data-cpu-core="2">*</span>&nbsp;<span class="number cpu-core-2" data-process="51171" data-cpu-core="2">2</span>
+<span class="builtin cpu-core-2" data-process="51171" data-cpu-core="2">print</span><span class="del-paren-open cpu-core-2" data-process="51171" data-cpu-core="2">(</span><span class="string cpu-core-2" data-process="51171" data-cpu-core="2">f&quot;El doble de 5 es: {doble(5)}&quot;</span><span class="del-paren-close cpu-core-2" data-process="51171" data-cpu-core="2">)</span>
+    </div>
+    
+    <div style="margin-top: 20px; color: #666; font-size: 12px; text-align: center;">
+        <p>🔥 Generado por Resaltador de Sintaxis MULTICORE - Máquina de Turing con Multiprocessing</p>
+        <p>⚡ Implementación optimizada usando 5 procesos en 3 núcleos de CPU simultáneamente</p>
+        <p>🚀 Aceleración REAL: 0.0x | Eficiencia: 0.4% | CPU: 50.0%</p>
+        <p><strong>💡 Cada token muestra información del proceso y núcleo que lo procesó al hacer hover</strong></p>
+        <p><em>🖥️ Este procesamiento utilizó verdaderamente múltiples núcleos de CPU en paralelo</em></p>
+    </div>
+</body>
+</html>
